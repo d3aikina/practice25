@@ -1,0 +1,161 @@
+// Prisma schema — сервисный центр по ремонту техники
+// Соответствует исходному db_script.txt с правками:
+//  - User.login / User.passwordHash сделаны опциональными (изначально пустые)
+//  - В OrderStatus добавлен статус "Ожидает подтверждения"
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  Client
+  Manager
+  Master
+  Admin
+}
+
+// Имена членов — латиница (требование Prisma), значения в БД — кириллица через @map
+enum OrderStatus {
+  Created              @map("Создан")
+  Diagnostics          @map("Диагностика")
+  AwaitingConfirmation @map("Ожидает подтверждения")
+  AwaitingParts        @map("Ожидание запчастей")
+  InProgress           @map("В работе")
+  Cancelled            @map("Отменен")
+  AwaitingPickup       @map("Ожидает получения")
+  Completed            @map("Завершен")
+}
+
+enum OrderServiceStatus {
+  Planned @map("Запланировано")
+  Done    @map("Выполнено")
+}
+
+enum MaterialRequestStatus {
+  Requested @map("Запрошено")
+  Ordered   @map("Заказано")
+  Received  @map("Получено")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  role         UserRole
+  login        String?  @unique @db.VarChar(50)
+  passwordHash String?  @map("password_hash") @db.VarChar(255)
+  fullName     String?  @map("full_name") @db.VarChar(150)
+  phone        String?  @db.VarChar(20)
+  email        String?  @db.VarChar(100)
+
+  ordersAsClient   Order[]            @relation("ClientOrders")
+  ordersAsManager  Order[]            @relation("ManagerOrders")
+  ordersAsMaster   Order[]            @relation("MasterOrders")
+  materialRequestsAsMaster  MaterialRequest[] @relation("MasterRequests")
+  materialRequestsAsManager MaterialRequest[] @relation("ManagerRequests")
+
+  @@map("users")
+}
+
+model Service {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(150)
+  basePrice   Decimal? @map("base_price") @db.Decimal(10, 2)
+  description String?
+
+  orderServices OrderService[]
+
+  @@map("services")
+}
+
+model Material {
+  id    Int      @id @default(autoincrement())
+  name  String   @db.VarChar(150)
+  unit  String?  @db.VarChar(20)
+  price Decimal? @db.Decimal(10, 2)
+  stock Int      @default(0)
+
+  orderMaterials   OrderMaterial[]
+  materialRequests MaterialRequest[]
+
+  @@map("materials")
+}
+
+model Order {
+  id                Int         @id @default(autoincrement())
+  clientId          Int         @map("client_id")
+  managerId         Int?        @map("manager_id")
+  masterId          Int?        @map("master_id")
+  deviceInfo        String?     @map("device_info") @db.VarChar(255)
+  defectDescription String?     @map("defect_description")
+  status            OrderStatus @default(Created)
+  estimatedCost     Decimal?    @map("estimated_cost") @db.Decimal(10, 2)
+  finalCost         Decimal?    @map("final_cost") @db.Decimal(10, 2)
+  createdAt         DateTime    @default(now()) @map("created_at")
+  completedAt       DateTime?   @map("completed_at")
+
+  client  User  @relation("ClientOrders", fields: [clientId], references: [id])
+  manager User? @relation("ManagerOrders", fields: [managerId], references: [id])
+  master  User? @relation("MasterOrders", fields: [masterId], references: [id])
+
+  services         OrderService[]
+  materials        OrderMaterial[]
+  materialRequests MaterialRequest[]
+
+  @@index([clientId])
+  @@index([managerId])
+  @@index([masterId])
+  @@index([status])
+  @@map("orders")
+}
+
+model OrderService {
+  id          Int                @id @default(autoincrement())
+  orderId     Int                @map("order_id")
+  serviceId   Int                @map("service_id")
+  status      OrderServiceStatus @default(Planned)
+  actualPrice Decimal?           @map("actual_price") @db.Decimal(10, 2)
+  comment     String?
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  service Service @relation(fields: [serviceId], references: [id])
+
+  @@index([orderId])
+  @@map("order_services")
+}
+
+model OrderMaterial {
+  id              Int  @id @default(autoincrement())
+  orderId         Int  @map("order_id")
+  materialId      Int  @map("material_id")
+  quantityPlanned Int? @map("quantity_planned")
+  quantityUsed    Int? @map("quantity_used")
+
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  material Material @relation(fields: [materialId], references: [id])
+
+  @@index([orderId])
+  @@map("order_materials")
+}
+
+model MaterialRequest {
+  id         Int                   @id @default(autoincrement())
+  orderId    Int                   @map("order_id")
+  masterId   Int                   @map("master_id")
+  materialId Int                   @map("material_id")
+  quantity   Int
+  status     MaterialRequestStatus @default(Requested)
+  managerId  Int?                  @map("manager_id")
+
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  master   User     @relation("MasterRequests", fields: [masterId], references: [id])
+  manager  User?    @relation("ManagerRequests", fields: [managerId], references: [id])
+  material Material @relation(fields: [materialId], references: [id])
+
+  @@index([orderId])
+  @@index([status])
+  @@map("material_requests")
+}
