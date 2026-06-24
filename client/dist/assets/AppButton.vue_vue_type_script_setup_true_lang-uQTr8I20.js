@@ -1,0 +1,6 @@
+import{l,d,c as i,G as c,C as b,i as m,x as p,N as u,A as g,o as a}from"./index-CBVZP42e.js";/**
+ * @license lucide-vue-next v0.460.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const y=l("LoaderCircleIcon",[["path",{d:"M21 12a9 9 0 1 1-6.219-8.56",key:"13zald"}]]),h=["type","disabled"],v=d({__name:"AppButton",props:{variant:{default:"primary"},size:{default:"md"},loading:{type:Boolean},disabled:{type:Boolean},type:{default:"button"},block:{type:Boolean}},setup(e){const t=e,s={primary:"bg-brand-600 text-white hover:bg-brand-700 shadow-soft",secondary:"bg-white text-slate-700 border border-slate-200 hover:bg-slate-50",ghost:"text-slate-600 hover:bg-slate-100",danger:"bg-red-500 text-white hover:bg-red-600",success:"bg-green-500 text-white hover:bg-green-600"},o={sm:"px-3 py-1.5 text-sm",md:"px-4 py-2.5 text-sm"},n=g(()=>["inline-flex items-center justify-center gap-2 rounded-xl font-medium transition active:scale-[0.97]","disabled:cursor-not-allowed disabled:opacity-50",s[t.variant],o[t.size],t.block?"w-full":""]);return(r,f)=>(a(),i("button",{type:e.type,disabled:e.disabled||e.loading,class:c(n.value)},[e.loading?(a(),b(m(y),{key:0,class:"h-4 w-4 animate-spin"})):p("",!0),u(r.$slots,"default")],10,h))}});export{v as _};
